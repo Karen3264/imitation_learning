@@ -23,5 +23,6 @@ class CenterBlockEnv(EmptyEnv):
             for y in range(cy - r, cy + r + 1):
                 self.grid.set(x, y, Wall())
         #goal
+        self.grid.set(width - 2, height - 2, None)
         self.put_obj(Goal(), *goal)
         self.goal_pos = goal
