@@ -103,6 +103,11 @@ class AStarPolicy(BasePolicy):
         acts = []
         for _ in range(batch_size):
             base_env = self.env.envs[0].unwrapped
+            base_env = (
+            self.env.envs[0].unwrapped #vectorised case
+            if hasattr(self.env, "envs")
+            else self.env.unwrapped #single-env case
+            )
             agent_pos = tuple(base_env.agent_pos)
             goal_pos = getattr(base_env, "goal_pos", (9, 9))
             act = find_optimal_action(base_env, goal_pos=goal_pos, agent_pos=agent_pos)
