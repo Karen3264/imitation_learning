@@ -84,3 +84,29 @@ def find_optimal_action(env, agent_pos=None, goal_pos=None):
                 heappush(pq, (f, g[sF], random.random(), sF))
     #if the heap empties with no goal found, stop safely
     return int(Actions.done)
+
+from stable_baselines3.common.policies import BasePolicy
+from imitation.policies.serialize import policy_registry
+
+class AStarPolicy(BasePolicy):
+    def __init__(self, observation_space, action_space, env=None):
+        super().__init__(observation_space, action_space)
+        self.env = env  #need env for agent/goal positions
+
+    def forward(self, obs, deterministic=False):
+        return None
+
+    def _predict(self, observation, deterministic=False):
+        batch_size = observation.shape[0] if isinstance(observation, np.ndarray) else 1
+        acts = []
+        for _ in range(batch_size):
+            base_env = self.env.envs[0].unwrapped
+            agent_pos = tuple(base_env.agent_pos)
+            goal_pos = getattr(base_env, "goal_pos", (9, 9))
+            act = find_optimal_action(base_env, goal_pos=goal_pos, agent_pos=agent_pos)
+            acts.append(act)
+        return torch.as_tensor(acts, device=self.device)
+
+
+
+
