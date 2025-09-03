@@ -85,6 +85,7 @@ def find_optimal_action(env, agent_pos=None, goal_pos=None):
     #if the heap empties with no goal found, stop safely
     return int(Actions.done)
 
+import torch
 from stable_baselines3.common.policies import BasePolicy
 from imitation.policies.serialize import policy_registry
 import numpy as np
