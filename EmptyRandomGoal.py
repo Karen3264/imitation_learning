@@ -11,13 +11,15 @@ class RandomGoalEmptyEnv(EmptyEnv):
         super().__init__(size=size, **kwargs)
         self.goal_pos = None
         self.deterministic = deterministic
-        if start_pos:
-            self.agent_pos = start_pos
+        self.start_pos = tuple(start_pos) if start_pos is not None else None
 
     def _gen_grid(self, width, height):
         super()._gen_grid(width, height) #generate the base empty grid
         #remove the default goal
         self.grid.set(width - 2, height - 2, None)
+
+        if self.start_pos is not None:
+          self.agent_pos = self.start_pos
 
         if self.deterministic:
             x, y = width - 2, height - 2
