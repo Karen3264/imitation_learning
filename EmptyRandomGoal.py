@@ -7,10 +7,12 @@ from minigrid.core.world_object import Goal
 
 
 class RandomGoalEmptyEnv(EmptyEnv):
-    def __init__(self, size=11, deterministic=False, **kwargs):
+    def __init__(self, size=11, deterministic=False, start_pos=None, **kwargs):
         super().__init__(size=size, **kwargs)
         self.goal_pos = None
         self.deterministic = deterministic
+        if start_pos:
+            self.agent_pos = start_pos
 
     def _gen_grid(self, width, height):
         super()._gen_grid(width, height) #generate the base empty grid
