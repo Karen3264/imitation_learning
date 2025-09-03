@@ -102,7 +102,6 @@ class AStarPolicy(BasePolicy):
         batch_size = observation.shape[0] if isinstance(observation, np.ndarray) else 1
         acts = []
         for _ in range(batch_size):
-            base_env = self.env.envs[0].unwrapped
             base_env = (
             self.env.envs[0].unwrapped #vectorised case
             if hasattr(self.env, "envs")
