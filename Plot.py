@@ -25,8 +25,7 @@ def run_episode_get_frame(env, seed: int = 0, policy=None, noise=False):
               action = policy.predict(obs)[0]
         obs, reward, terminated, truncated, info = env.step(action)
         trajectory.append(np.array(env.agent_pos))
-    #frame = env.render()
-    frame = env.unwrapped.render(highlight=False)
+    frame = env.render()
     env.close()
 
     return frame, np.array(trajectory)
