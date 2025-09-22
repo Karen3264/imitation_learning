@@ -1,6 +1,7 @@
 from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
 import torch
 from torch import nn
+import gymnasium as gym
 
 #smaller CNN from https://minigrid.farama.org/content/training/
 class SmallCNN(BaseFeaturesExtractor):
