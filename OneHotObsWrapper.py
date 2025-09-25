@@ -9,7 +9,7 @@ class OneHotObsWrapper(ObservationWrapper):
         num_bits=8 # 4 types, 4 colors, 4 orientations for agent
 
         new_image_space = spaces.Box(
-            low=0, high=255, shape=(obs_shape[0], obs_shape[1], num_bits), dtype="uint8"
+            low=0, high=1, shape=(obs_shape[0], obs_shape[1], num_bits), dtype="uint8"
         )
         self.observation_space = spaces.Dict(
             {**self.observation_space.spaces, "image": new_image_space}
