@@ -1,5 +1,6 @@
 from gymnasium.core import ObservationWrapper
 from gymnasium import spaces
+import numpy as np
 
 class OneHotObsWrapper(ObservationWrapper):
     def __init__(self, env, tile_size=8):
