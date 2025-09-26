@@ -23,45 +23,32 @@ def _heuristic(x, y, gx, gy, curr_dir):
     td = min((((h - curr_dir) % 4) for h in desired), default=0)
     td = min(td, 4 - td)  #minimal turns to face a helpful axis
     return manhattan + (1 if td > 0 else 0)
+def astar_plan(env, agent_pos=None, goal_pos=None):
+    (ax, ay), (gx, gy), d0 = agent_pos, goal_pos, int(env.agent_dir)
+    start = (ax, ay, d0)
+    g, parent, act_from_parent = {start: 0}, {start: None}, {start: None}
+    queue, closed = [], set()
+    heappush(queue, (0, 0, random.random(), start)) #push candidate state with priority f into the queue
 
-def find_optimal_action(env, agent_pos=None, goal_pos=None):
-    (ax, ay), (gx, gy), d0= agent_pos, goal_pos, int(env.agent_dir)
-    if (ax, ay) == (gx, gy): return int(Actions.done) #if agent pos = goal pos
-    start = (ax, ay, d0) #agent pos and initial direction
-    g = {start: 0} #g: best-known cost-to-reach for each explored state
-    parent = {start: None} #parent: back-pointer graph to reconstruct the path (state -> parent state)
-    act_from_parent = {start: None} #act_from_parent: the action taken to move from parent[state] → state
-    pq = [] #Priority queue of states.
-    heappush(pq, (0, 0, random.random(), start))  #(f, g, tie, state)
-    closed = set()  #closed set of states whose optimal g-cost has been finalized.
-
-    #===========A* main loop==========#
-    while pq:
-        #pop the most promising state (lowest f; random tie-break on equal f,g)
-        _, _, _, s = heappop(pq)
-        #skip if we have already finalized this state
+    goal_state = None
+    while len(queue) > 0: #keep looping as long as there are elements in the queue
+        _, _, _, s = heappop(queue) #pop the state with the best priority (lowest f) to expand next
         if s in closed:
             continue
         closed.add(s)
-        #unpack the state into position and heading
         x, y, d = s
-
-        #=====if at goal return opt action=====#
         if (x, y) == (gx, gy):
-          while parent[s] is not None and parent[parent[s]] is not None:
-              s = parent[s]
-          return int(act_from_parent[s])
-
+            goal_state = s
+            break
         #=====Expand 3 successors from (x,y,d): turn left, turn right, move forward=====#
         #LEFT
         sL = (x,y,(d - 1)%4) #new state
         if g[s] + 1 < g.get(sL, 1e9): #does the path “current best cost to s” + cost of this action (1) beat the best cost we’ve seen for sL, if unseen 1e9 is large
-            #if better...
             g[sL] = g[s] + 1 #update the best known cost-to-reach sL
             parent[sL] = s #backpointer
             act_from_parent[sL] = Actions.left #backpointer
             f = g[sL] + _heuristic(x, y, gx, gy, sL[2]) #compute the A* priority
-            heappush(pq, (f, g[sL], random.random(), sL))
+            heappush(queue, (f, g[sL], random.random(), sL)) 
         #RIGHT
         sR = (x,y,(d + 1)%4) #new state
         if g[s] + 1 < g.get(sR, 1e9):
@@ -69,11 +56,11 @@ def find_optimal_action(env, agent_pos=None, goal_pos=None):
             parent[sR] = s
             act_from_parent[sR] = Actions.right
             f = g[sR] + _heuristic(x, y, gx, gy, sR[2])
-            heappush(pq, (f, g[sR], random.random(), sR))
+            heappush(queue, (f, g[sR], random.random(), sR))
         #FORWARD
         DX = (1, 0, -1, 0)  #0=right,1=down,2=left,3=up
         DY = (0, 1, 0, -1)
-        nx, ny = x + DX[d], y + DY[d] #new state x, y, d remains same
+        nx, ny = x + DX[d], y + DY[d] #new state x, y, d remains same TO SEE IN WHAT DIRECTION we're going
         if _is_passable_cell(env, nx, ny):
             sF = (nx, ny, d)
             if g[s] + 1 < g.get(sF, 1e9):
@@ -81,38 +68,68 @@ def find_optimal_action(env, agent_pos=None, goal_pos=None):
                 parent[sF] = s
                 act_from_parent[sF] = Actions.forward
                 f = g[sF] + _heuristic(nx, ny, gx, gy, d) #heuristic now evaluated at the new cell (nx, ny) with same dir d
-                heappush(pq, (f, g[sF], random.random(), sF))
-    #if the heap empties with no goal found, stop safely
-    return int(Actions.done)
+                heappush(queue, (f, g[sF], random.random(), sF))
+
+    if goal_state is None:
+        return {}  # no path found
+
+    #===== backtrack path and build lookup =====#
+    path_states, path_actions = [], []
+    s = goal_state
+    while parent[s] is not None:
+        path_states.append(s)
+        path_actions.append(act_from_parent[s])
+        s = parent[s]
+    path_states.reverse()
+    path_actions.reverse()
+    #return a dictionary 
+    lookup = {}
+    s = goal_state
+    while parent[s] is not None:
+        p = parent[s]
+        a = act_from_parent[s]
+        key = f"{p[0]}_{p[1]}_{p[2]}"
+        lookup[key] = int(a)
+        s = p
+    return lookup
 
 import torch
 from stable_baselines3.common.policies import BasePolicy
 from imitation.policies.serialize import policy_registry
 import numpy as np
-
 class AStarPolicy(BasePolicy):
-    def __init__(self, observation_space, action_space, env=None):
+    def __init__(self, observation_space, action_space, env=None, calc_path_each_step=True):
         super().__init__(observation_space, action_space)
-        self.env = env  #need env for agent/goal positions
+        self.env = env
+        self.cached_paths = {}
+        self.calc_path_each_step=calc_path_each_step
+
 
     def forward(self, obs, deterministic=False):
         return None
 
     def _predict(self, observation, deterministic=False):
-        batch_size = observation.shape[0] if isinstance(observation, np.ndarray) else 1
         acts = []
-        for _ in range(batch_size):
-            base_env = (
-            self.env.envs[0].unwrapped #vectorised case
-            if hasattr(self.env, "envs")
-            else self.env.unwrapped #single-env case
-            )
-            agent_pos = tuple(base_env.agent_pos)
-            goal_pos = getattr(base_env, "goal_pos", (9, 9))
-            act = find_optimal_action(base_env, goal_pos=goal_pos, agent_pos=agent_pos)
+        if hasattr(self.env, "envs"):
+            for i, base_env in enumerate(self.env.envs):
+                base_env = base_env.unwrapped
+                state=str(base_env.agent_pos[0])+"_"+str(base_env.agent_pos[1])+"_"+str(int(base_env.agent_dir))
+                if i not in self.cached_paths or state not in self.cached_paths[i]:
+                    self.cached_paths[i] = astar_plan(base_env, agent_pos=tuple(base_env.agent_pos),goal_pos=getattr(base_env, "goal_pos", (9, 9)))
+                act = self.cached_paths[i].get(state, int(Actions.done))
+                acts.append(act)
+        else:
+            base_env = self.env.unwrapped
+            state=str(base_env.agent_pos[0])+"_"+str(base_env.agent_pos[1])+"_"+str(int(base_env.agent_dir))
+            if 0 not in self.cached_paths or state not in self.cached_paths[0]:
+                self.cached_paths[0] = astar_plan(base_env, agent_pos=tuple(base_env.agent_pos), goal_pos=getattr(base_env, "goal_pos", (9, 9)))
+            act = self.cached_paths[0].get(state, int(Actions.done))
             acts.append(act)
+
+        if self.calc_path_each_step: #useful when dynamic or noisy environment
+          self.cached_paths = {}
+
+
         return torch.as_tensor(acts, device=self.device)
-
-
 
 
