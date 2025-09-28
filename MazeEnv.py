@@ -13,6 +13,10 @@ class MazeEnv(MiniGridEnv):
         self.random_goal = bool(random_goal)
         self.goal_pos = None
 
+    def step(self, action):
+        obs, reward, terminated, truncated, info = super().step(action)
+        return obs, float(reward), terminated, truncated, info
+
     #generates the maze, places the agent and the goal
     def _gen_grid(self, width, height):
         self.grid = Grid(width, height)
@@ -95,3 +99,5 @@ class MazeEnv(MiniGridEnv):
         self.goal_pos = (gx, gy)
         self.put_obj(Goal(), gx, gy)
         self.mission = "reach the green goal"
+
+
