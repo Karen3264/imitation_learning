@@ -29,7 +29,7 @@ class RandomGoalEmptyEnv(EmptyEnv):
             raise ValueError(f"Invalid action {action}")
 
         obs, reward, terminated, truncated, info = super().step(real_action)
-        return obs, reward, terminated, truncated, info
+        return obs, float(reward), terminated, truncated, info
 
     def _gen_grid(self, width, height):
         super()._gen_grid(width, height)  # generate the base empty grid
