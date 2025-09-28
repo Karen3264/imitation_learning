@@ -26,3 +26,8 @@ class CenterBlockEnv(EmptyEnv):
         self.grid.set(width - 2, height - 2, None)
         self.put_obj(Goal(), *goal)
         self.goal_pos = goal
+
+
+    def step(self, action):
+        obs, reward, terminated, truncated, info = super().step(action)
+        return obs, float(reward), terminated, truncated, info
